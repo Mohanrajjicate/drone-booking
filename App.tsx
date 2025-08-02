@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { FormData, FormErrors, BookedSlots, TimeSlot, CalendarDay, Database } from './types';
+import { FormData, FormErrors, BookedSlots, TimeSlot, CalendarDay, Database, BookingDetails } from './types';
 import { TIME_SLOTS, MONTH_NAMES, DAY_NAMES_SHORT, COLLEGE_LIST } from './constants';
 
 const formatDateKey = (date: Date): string => {
@@ -55,11 +55,13 @@ const api = {
     }
 
     const newBookedSlots: BookedSlots = {};
-    for (const booking of data) {
-      if (!newBookedSlots[booking.date]) {
-        newBookedSlots[booking.date] = [];
-      }
-      newBookedSlots[booking.date].push(booking.slot_id);
+    if (data) {
+        for (const booking of data) {
+          if (!newBookedSlots[booking.date]) {
+            newBookedSlots[booking.date] = [];
+          }
+          newBookedSlots[booking.date].push(booking.slot_id);
+        }
     }
     return newBookedSlots;
   },
@@ -82,7 +84,8 @@ const api = {
         name: user.name,
         email: user.email,
         contact_number: user.contactNumber,
-        college: user.college
+        college: user.college,
+        event_name: user.eventName
     });
 
     if (error) {
@@ -267,7 +270,7 @@ interface RightPanelProps {
 
 const RightPanel: React.FC<RightPanelProps> = ({ selectedDate, selectedSlot, bookedSlots, formData, formErrors, termsAccepted, isSubmitting, onSlotSelect, onFormChange, onTermsChange, onSubmit }) => {
     const isFormValid = useMemo(() => {
-        return formData.name && formData.email && formData.contactNumber && formData.college && Object.keys(formErrors).length === 0 && termsAccepted;
+        return formData.name && formData.eventName && formData.email && formData.contactNumber && formData.college && Object.keys(formErrors).length === 0 && termsAccepted;
     }, [formData, formErrors, termsAccepted]);
 
     const slotsForSelectedDate = selectedDate ? bookedSlots[formatDateKey(selectedDate)] || [] : [];
@@ -344,6 +347,10 @@ const RightPanel: React.FC<RightPanelProps> = ({ selectedDate, selectedSlot, boo
                                     <div>
                                         <label htmlFor="name" className="block text-sm font-medium text-slate-700">Full Name</label>
                                         <input type="text" name="name" id="name" value={formData.name} onChange={onFormChange} required className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm" />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="eventName" className="block text-sm font-medium text-slate-700">Event Name</label>
+                                        <input type="text" name="eventName" id="eventName" value={formData.eventName} onChange={onFormChange} required className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm" placeholder="e.g., Graduation Day Coverage"/>
                                     </div>
                                     <div>
                                         <label htmlFor="email" className="block text-sm font-medium text-slate-700">Email Address</label>
@@ -432,7 +439,7 @@ const ConfirmationScreen: React.FC<ConfirmationProps> = ({ onReset, details }) =
             </div>
             <h2 className="text-2xl font-bold text-slate-800 mb-2">Booking Confirmed!</h2>
             <p className="text-slate-600 mb-6 max-w-sm">
-                Thank you, <span className="font-semibold text-sky-600">{details.name}</span>. Your drone booking for <span className="font-semibold">{details.date}</span> at <span className="font-semibold">{slotLabel}</span> is confirmed. A calendar invite will be sent to your email.
+                Thank you, <span className="font-semibold text-sky-600">{details.name}</span>. Your drone booking for <span className="font-semibold">{details.date}</span> at <span className="font-semibold">{slotLabel}</span> is confirmed. A confirmation mail has been sent to your email address.
             </p>
             <button onClick={onReset} className="w-full max-w-xs py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500">
                 Make Another Booking
@@ -445,7 +452,7 @@ function App() {
   const [currentMonthDate, setCurrentMonthDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
-  const [formData, setFormData] = useState<FormData>({ name: '', email: '', contactNumber: '', college: '' });
+  const [formData, setFormData] = useState<FormData>({ name: '', email: '', contactNumber: '', college: '', eventName: '' });
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -527,6 +534,31 @@ function App() {
         ...prev,
         [dateKey]: [...(prev[dateKey] || []), selectedSlot].sort()
       }));
+
+      // Prepare details for confirmation screen and email function
+      const slotLabel = TIME_SLOTS.find(s => s.id === selectedSlot)?.label || '';
+      const bookingDetails: BookingDetails = {
+          name: formData.name,
+          email: formData.email,
+          date: selectedDate.toISOString(),
+          slotId: selectedSlot,
+          slotLabel: slotLabel,
+          college: formData.college,
+          eventName: formData.eventName,
+      };
+
+      // Trigger the email sending function in the background
+      if(supabase) {
+        supabase.functions.invoke('send-booking-confirmation', {
+            body: bookingDetails,
+        }).then(({ error }) => {
+            if (error) {
+                console.error("Error sending confirmation email:", error);
+                // Optionally notify user of email failure, but booking is still successful
+            }
+        });
+      }
+
       setConfirmationDetails({
           name: formData.name,
           date: selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }),
@@ -542,7 +574,7 @@ function App() {
     setBookingConfirmed(false);
     setSelectedDate(null);
     setSelectedSlot(null);
-    setFormData({ name: '', email: '', contactNumber: '', college: '' });
+    setFormData({ name: '', email: '', contactNumber: '', college: '', eventName: '' });
     setTermsAccepted(false);
     setConfirmationDetails({name: '', date: '', slot: ''});
   };

@@ -4,6 +4,7 @@ export interface FormData {
   email: string;
   contactNumber: string;
   college: string;
+  eventName: string;
 }
 
 export interface FormErrors {
@@ -28,6 +29,18 @@ export interface CalendarDay {
   isWeekend: boolean;
 }
 
+// Type for data sent to the Edge Function
+export interface BookingDetails {
+    name: string;
+    email: string;
+    date: string; // ISO string
+    slotId: string;
+    slotLabel: string;
+    college: string;
+    eventName: string;
+}
+
+
 export interface Database {
   public: {
     Tables: {
@@ -41,6 +54,7 @@ export interface Database {
           email: string;
           contact_number: string;
           college: string;
+          event_name: string;
         };
         Insert: {
           date: string;
@@ -49,6 +63,7 @@ export interface Database {
           email: string;
           contact_number: string;
           college: string;
+          event_name: string;
         };
         Update: {
           date?: string;
@@ -57,7 +72,9 @@ export interface Database {
           email?: string;
           contact_number?: string;
           college?: string;
+          event_name?: string;
         };
+        Relationships: [];
       };
     };
     Views: Record<string, never>;
