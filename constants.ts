@@ -13,3 +13,13 @@ export const TIME_SLOTS: TimeSlot[] = [
 export const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 export const DAY_NAMES_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+export const COLLEGE_LIST = [
+  'JKKN Dental College and Hospital',
+  'JKKN College Of Allied Health Science',
+  'JKKN College of Pharmacy',
+  'Sresakthimayeil Institute of Nursing and Research',
+  'JKKN College of Engineering and Technology',
+  'JKKN College of Arts and Science',
+  'JKKN College of Education',
+];
