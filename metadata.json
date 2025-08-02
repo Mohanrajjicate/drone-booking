@@ -1,0 +1,6 @@
+{
+  "name": "JKKN Drone Booking Portal",
+  "description": "An interactive web application for students and staff of JKKN institutions to book drones for media production projects. Users can select available dates and time slots, fill in their details, and confirm bookings seamlessly.",
+  "requestFramePermissions": [],
+  "prompt": ""
+}
