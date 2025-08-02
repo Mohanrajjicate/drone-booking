@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { FormData, FormErrors, BookedSlots, TimeSlot, CalendarDay } from './types';
-import { TIME_SLOTS, MONTH_NAMES, DAY_NAMES_SHORT } from './constants';
+import { FormData, FormErrors, BookedSlots, TimeSlot, CalendarDay, Database } from './types';
+import { TIME_SLOTS, MONTH_NAMES, DAY_NAMES_SHORT, COLLEGE_LIST } from './constants';
 
 const formatDateKey = (date: Date): string => {
   const year = date.getFullYear();
@@ -12,7 +12,7 @@ const formatDateKey = (date: Date): string => {
 };
 
 // --- SUPABASE CLIENT & API ---
-let supabase: SupabaseClient | null = null;
+let supabase: SupabaseClient<Database> | null = null;
 let supabaseError: string | null = null;
 
 try {
@@ -21,7 +21,7 @@ try {
   if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error("Supabase URL or anonymous key is missing. Cannot connect to the database.");
   }
-  supabase = createClient(supabaseUrl, supabaseAnonKey);
+  supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
 } catch (e) {
   supabaseError = (e as Error).message;
   console.error(e);
@@ -81,7 +81,8 @@ const api = {
         slot_id: slotId,
         name: user.name,
         email: user.email,
-        contact_number: user.contactNumber
+        contact_number: user.contactNumber,
+        college: user.college
     });
 
     if (error) {
@@ -259,14 +260,14 @@ interface RightPanelProps {
     termsAccepted: boolean;
     isSubmitting: boolean;
     onSlotSelect: (slotId: string) => void;
-    onFormChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    onFormChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
     onTermsChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
     onSubmit: (e: React.FormEvent) => void;
 }
 
 const RightPanel: React.FC<RightPanelProps> = ({ selectedDate, selectedSlot, bookedSlots, formData, formErrors, termsAccepted, isSubmitting, onSlotSelect, onFormChange, onTermsChange, onSubmit }) => {
     const isFormValid = useMemo(() => {
-        return formData.name && formData.email && formData.contactNumber && Object.keys(formErrors).length === 0 && termsAccepted;
+        return formData.name && formData.email && formData.contactNumber && formData.college && Object.keys(formErrors).length === 0 && termsAccepted;
     }, [formData, formErrors, termsAccepted]);
 
     const slotsForSelectedDate = selectedDate ? bookedSlots[formatDateKey(selectedDate)] || [] : [];
@@ -354,6 +355,22 @@ const RightPanel: React.FC<RightPanelProps> = ({ selectedDate, selectedSlot, boo
                                         <input type="tel" name="contactNumber" id="contactNumber" value={formData.contactNumber} onChange={onFormChange} required className={`mt-1 block w-full px-3 py-2 bg-white border rounded-md shadow-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm ${formErrors.contactNumber ? 'border-red-500' : 'border-slate-300'}`} />
                                         {formErrors.contactNumber && <p className="mt-1 text-xs text-red-600">{formErrors.contactNumber}</p>}
                                     </div>
+                                    <div>
+                                        <label htmlFor="college" className="block text-sm font-medium text-slate-700">College</label>
+                                        <select
+                                            name="college"
+                                            id="college"
+                                            value={formData.college}
+                                            onChange={onFormChange}
+                                            required
+                                            className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
+                                        >
+                                            <option value="" disabled>Select your college</option>
+                                            {COLLEGE_LIST.map(college => (
+                                                <option key={college} value={college}>{college}</option>
+                                            ))}
+                                        </select>
+                                    </div>
                                     <div className="flex items-start">
                                         <div className="flex items-center h-5">
                                             <input id="terms" name="terms" type="checkbox" checked={termsAccepted} onChange={onTermsChange} className="focus:ring-sky-500 h-4 w-4 text-sky-600 border-slate-300 rounded" />
@@ -428,7 +445,7 @@ function App() {
   const [currentMonthDate, setCurrentMonthDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
-  const [formData, setFormData] = useState<FormData>({ name: '', email: '', contactNumber: '' });
+  const [formData, setFormData] = useState<FormData>({ name: '', email: '', contactNumber: '', college: '' });
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -480,7 +497,7 @@ function App() {
     setSelectedSlot(slotId);
   };
   
-  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
@@ -525,7 +542,7 @@ function App() {
     setBookingConfirmed(false);
     setSelectedDate(null);
     setSelectedSlot(null);
-    setFormData({ name: '', email: '', contactNumber: '' });
+    setFormData({ name: '', email: '', contactNumber: '', college: '' });
     setTermsAccepted(false);
     setConfirmationDetails({name: '', date: '', slot: ''});
   };
